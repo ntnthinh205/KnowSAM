@@ -79,9 +79,11 @@ class Trainer(nn.Module):
         entropy_unlab = pooling(entropy_unlab).view(self.args.labeled_bs, -1)
         entropy_lab = pooling(entropy_lab).view(self.args.labeled_bs, -1)
 
-        _, min_indices_flat = torch.topk(entropy_unlab, top_k, largest=False)
+        # _, min_indices_flat = torch.topk(entropy_unlab, top_k, largest=False)
+        _, min_indices_flat = torch.topk(entropy_unlab, top_k, largest=True)
         min_indices_2d = torch.stack([min_indices_flat // patch_size, min_indices_flat % patch_size], dim=-1)
-        _, min_indices_flat_lab = torch.topk(entropy_lab, top_k, largest=False)
+        # _, min_indices_flat_lab = torch.topk(entropy_lab, top_k, largest=False)
+        _, min_indices_flat_lab = torch.topk(entropy_lab, top_k, largest=True)
         min_indices_2d_lab = torch.stack([min_indices_flat_lab // patch_size, min_indices_flat_lab % patch_size],
                                          dim=-1)
 
@@ -337,4 +339,5 @@ class Trainer(nn.Module):
             torch.save(self.SGDL.state_dict(), save_best_SGDL)
 
         self.sam_model.train()
+
         self.SGDL.train()
