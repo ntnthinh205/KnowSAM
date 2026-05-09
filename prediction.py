@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
-    bilinear = True
+    bilinear = False
     Largest = False
     data_transforms = build_transforms(args)
 
