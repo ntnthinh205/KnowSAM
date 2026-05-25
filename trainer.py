@@ -229,6 +229,12 @@ class Trainer(nn.Module):
         self.sam_model.eval()
         self.SGDL.eval()
 
+        if len(val_loader) == 0:
+            logging.warning('iteration %d : validation skipped because val_loader is empty', iter_num)
+            self.sam_model.train()
+            self.SGDL.train()
+            return
+
         avg_dice_sam = 0.0
         avg_dice_SGDL = 0.0
         avg_dice_unet = 0.0
@@ -301,6 +307,12 @@ class Trainer(nn.Module):
     def val_ACDC(self, val_loader, snapshot_path, iter_num):
         self.sam_model.eval()
         self.SGDL.eval()
+
+        if len(val_loader) == 0:
+            logging.warning('iteration %d : ACDC validation skipped because val_loader is empty', iter_num)
+            self.sam_model.train()
+            self.SGDL.train()
+            return
 
         avg_dice_sam = 0.0
         avg_dice_SGDL = 0.0
