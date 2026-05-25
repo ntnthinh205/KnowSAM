@@ -1,4 +1,5 @@
 import os
+import logging
 import h5py
 import torch
 import cv2
@@ -60,6 +61,11 @@ class build_Dataset(Dataset):
                 self.image_list = f.readlines()
             self.image_list = [item.replace('\n', '') for item in self.image_list]
             self.sample_list = [self.data_dir + "/data/slices/" + image_name + ".h5" for image_name in self.image_list]
+            # filter out missing files to avoid DataLoader worker crashes
+            missing = [p for p in self.sample_list if not os.path.exists(p)]
+            if missing:
+                logging.warning("train_acdc_list: %d missing HDF5 files will be skipped. Example: %s", len(missing), missing[:3])
+                self.sample_list = [p for p in self.sample_list if os.path.exists(p)]
             self.sample_list_labeled = patients_to_slices(args.dataset, args.labeled_num)
             print("train total {} samples".format(len(self.sample_list)))
         elif self.split == "val_acdc_list":
@@ -68,6 +74,11 @@ class build_Dataset(Dataset):
                 self.image_list = f.readlines()
             self.image_list = [item.replace('\n', '') for item in self.image_list]
             self.sample_list = [self.data_dir + "/data/" + image_name + ".h5" for image_name in self.image_list]
+            # filter missing validation files and warn (prevents worker FileNotFoundError)
+            missing = [p for p in self.sample_list if not os.path.exists(p)]
+            if missing:
+                logging.warning("val_acdc_list: %d missing HDF5 files in %s/data; they will be skipped. Example: %s", len(missing), self.data_dir, missing[:3])
+                self.sample_list = [p for p in self.sample_list if os.path.exists(p)]
             print("val total {} samples".format(len(self.sample_list)))
         elif self.split == "test_acdc_list":
             labeled_path = os.path.join(self.data_dir + "/test.list")
@@ -75,6 +86,10 @@ class build_Dataset(Dataset):
                 self.image_list = f.readlines()
             self.image_list = [item.replace('\n', '') for item in self.image_list]
             self.sample_list = [self.data_dir + "/data/" + image_name + ".h5" for image_name in self.image_list]
+            missing = [p for p in self.sample_list if not os.path.exists(p)]
+            if missing:
+                logging.warning("test_acdc_list: %d missing HDF5 files will be skipped. Example: %s", len(missing), missing[:3])
+                self.sample_list = [p for p in self.sample_list if os.path.exists(p)]
             print("test total {} samples".format(len(self.sample_list)))
         elif "test" in self.split:
             if "CVC-300" in self.split:
