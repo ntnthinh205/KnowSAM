@@ -172,10 +172,22 @@ class build_Dataset(Dataset):
                         data = self.transform["train_strong"](image=image, mask=label)
                         image = data['image']
                         label = data['mask']
-                image = np.expand_dims(image, axis=0)
-                label = label
-                image, label = torch.tensor(image), torch.tensor(label)
-                image = image.repeat(3, 1, 1)
+
+                image = np.asarray(image)
+                if image.ndim == 2:
+                    image = image[np.newaxis, ...]
+                elif image.ndim == 3:
+                    if image.shape[-1] in (1, 3):
+                        image = np.transpose(image, (2, 0, 1))
+                    elif image.shape[0] not in (1, 3):
+                        raise ValueError(f"Unexpected image shape {image.shape} for {case}")
+                else:
+                    raise ValueError(f"Unexpected image ndim {image.ndim} for {case}")
+
+                image = torch.tensor(image, dtype=torch.float32)
+                label = torch.tensor(label, dtype=torch.float32)
+                if image.shape[0] == 1:
+                    image = image.repeat(3, 1, 1)
                 sample = {"image": image, "label": label, "idx": idx}
                 return sample
             else:

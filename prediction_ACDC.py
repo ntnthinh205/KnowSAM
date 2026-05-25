@@ -1,9 +1,13 @@
+import numpy as np
+import torch
+import torch.nn.functional as F
 
 from medpy import metric
 from scipy.ndimage import zoom
 
 
 def getLargestCC(segmentation):
+    # Keep only the largest connected component to suppress small noisy islands.
     from skimage.measure import label
     labels = label(segmentation)
     #assert( labels.max() != 0 ) # assume at least 1 CC
@@ -14,6 +18,7 @@ def getLargestCC(segmentation):
     return largestCC
 
 def calculate_metric_percase(sam_pred, SGDL_pred, gt):
+    # Convert predictions and label to binary masks before computing metrics.
     sam_pred[sam_pred > 0] = 1
     SGDL_pred[SGDL_pred > 0] = 1
     gt[gt > 0] = 1
@@ -37,12 +42,14 @@ def get_entropy_map(p):
 
 
 def test_single_volume(args, image, label, sam_model, SGDL):
+    # Evaluate one 3D case slice by slice using 2D inference.
     classes = args.num_classes
     patch_size = [args.image_size, args.image_size]
     image, label = image.squeeze(0).cpu().detach().numpy(), label.squeeze(0).cpu().detach().numpy()
     sam_prediction = np.zeros_like(label)
     SGDL_prediction = np.zeros_like(label)
     for ind in range(image.shape[0]):
+        # Resize each slice to the fixed input size expected by the network.
         slice = image[ind, :, :]
         x, y = slice.shape[0], slice.shape[1]
         slice = zoom(slice, (patch_size[0] / x, patch_size[1] / y), order=0)
@@ -50,6 +57,7 @@ def test_single_volume(args, image, label, sam_model, SGDL):
         input = torch.from_numpy(slice).unsqueeze(0).unsqueeze(0).float().cuda()
         input = input.repeat(1,3,1,1)
         with torch.no_grad():
+            # SGDL gives the coarse segmentation and SAM refines it through prompts.
             pred_UNet, pred_VNet, pred_UNet_soft, pred_VNet_soft, fusion_map = SGDL(input)
             image_embeddings = sam_model.image_encoder(input)
             points_embedding, boxes_embedding, mask_embedding = sam_model.super_prompt(image_embeddings)
@@ -140,12 +148,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     data_transforms = build_transforms(args)
 
-    test_dataset = build_Dataset(data_dir=args.data_path + args.dataset, split="test_list",
+    # Run benchmark on each test dataset and print averaged metrics.
+    test_dataset = build_Dataset(args, data_dir=args.data_path + args.dataset, split="test_list",
                                  transform=data_transforms["valid_test"])
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2)
 
     model = "SGDL"
     if model == "SGDL":
+        # Load the trained fusion model for evaluation.
         SGDL_model = KnowSAM(args, bilinear=True).to(args.device).train()
         SGDL_checkpoint = torch.load(args.SGDL_model_path)
         SGDL_model.load_state_dict(SGDL_checkpoint)
@@ -160,6 +170,7 @@ if __name__ == '__main__':
         final_res = [0, 0, 0, 0, 0]
 
         for i_batch, sampled_batch in enumerate(test_loader):
+            # Process one test volume and collect metrics for each class.
             test_image, test_label = sampled_batch["image"].cuda(), sampled_batch["label"].cuda()
             image, label = test_image.squeeze(0).cpu().detach().numpy(), test_label.squeeze(0).cpu().detach().numpy()
             SGDL_prediction = np.zeros_like(label)
