@@ -53,6 +53,8 @@ parser.add_argument('--max_iterations', type=int, default=50000,
 
 parser.add_argument('--n_fold', type=int, default=1,
                     help='maximum epoch number to train')
+parser.add_argument('--snapshot_path', type=str, default='./Results/results_ACDC_10',
+                    help='root directory for logs and checkpoints')
 parser.add_argument('--consistency', type=float, default=0.1,
                     help='consistency')
 parser.add_argument('--consistency_rampup', type=float,
@@ -61,6 +63,7 @@ parser.add_argument('--device', type=str, default='cuda')
 parser.add_argument("--multimask", type=bool, default=False, help="ouput multimask")
 parser.add_argument("--encoder_adapter", type=bool, default=True, help="use adapter")
 parser.add_argument("--sam_checkpoint", type=str, default="./sam_vit_b_01ec64.pth", help="sam checkpoint")
+parser.add_argument('--no_val', action='store_true', default=False, help='disable validation during training')
 
 
 args = parser.parse_args()
@@ -88,6 +91,7 @@ def get_current_consistency_weight(epoch):
 def train(args, snapshot_path):
     batch_size = args.batch_size
     max_iterations = args.max_iterations
+    save_every = 500
     # model
     trainer = Trainer(args)
 
@@ -120,12 +124,17 @@ def train(args, snapshot_path):
         for i_batch, sampled_batch in enumerate(train_loader):
             volume_batch, label_batch = sampled_batch['image'].cuda(), sampled_batch['label'].cuda()
             trainer.train(volume_batch, label_batch, iter_num)
+            if iter_num > 0 and iter_num % save_every == 0:
+                trainer.save_latest(snapshot_path, iter_num)
             iter_num = iter_num + 1
             if iter_num > 0 and iter_num % 200 == 0:
-                if "ACDC" not in args.dataset:
-                    trainer.val(val_loader, snapshot_path, iter_num)
-                else:
-                    trainer.val_ACDC(val_loader, snapshot_path, iter_num)
+                if not args.no_val:
+                    if "ACDC" not in args.dataset:
+                        trainer.val(val_loader, snapshot_path, iter_num)
+                    else:
+                        trainer.val_ACDC(val_loader, snapshot_path, iter_num)
+
+        trainer.save_latest(snapshot_path, iter_num)
 
 
 if __name__ == '__main__':
@@ -137,7 +146,7 @@ if __name__ == '__main__':
         torch.manual_seed(2024)
         torch.cuda.manual_seed(2024)
 
-        snapshot_path = "./Results/results_ACDC_10/fold_" + str(fold)
+        snapshot_path = os.path.join(args.snapshot_path, "fold_" + str(fold))
 
         if not os.path.exists(snapshot_path):
             os.makedirs(snapshot_path)

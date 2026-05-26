@@ -46,6 +46,18 @@ class Trainer(nn.Module):
             else:
                 value.requires_grad = False
 
+    def save_checkpoint(self, snapshot_path, iter_num, tag="latest"):
+        checkpoint = {
+            "iter_num": iter_num,
+            "sam_model": self.sam_model.state_dict(),
+            "SGDL": self.SGDL.state_dict(),
+            "optimizer_sam": self.optimizer_sam.state_dict(),
+            "optimizer_SGDL": self.optimizer_SGDL.state_dict(),
+            "best_performance_sam": self.best_performance_sam,
+            "best_performance_SGDL": self.best_performance_SGDL,
+        }
+        torch.save(checkpoint, os.path.join(snapshot_path, f"checkpoint_{tag}.pth"))
+
     def sigmoid_rampup(self, current, rampup_length):
         """Exponential rampup from https://arxiv.org/abs/1610.02242"""
         if rampup_length == 0:
@@ -224,6 +236,9 @@ class Trainer(nn.Module):
                      % (iter_num, sam_loss.item(), lr_,
                         SGDL_loss.item(), (UNet_loss + VNet_loss) / 2, fusion_loss,  UNet_lr_,
                         ))
+
+    def save_latest(self, snapshot_path, iter_num):
+        self.save_checkpoint(snapshot_path, iter_num, tag="latest")
 
     def val(self, val_loader, snapshot_path, iter_num):
         self.sam_model.eval()

@@ -149,7 +149,7 @@ if __name__ == '__main__':
     data_transforms = build_transforms(args)
 
     # Run benchmark on each test dataset and print averaged metrics.
-    test_dataset = build_Dataset(args, data_dir=args.data_path + args.dataset, split="test_list",
+    test_dataset = build_Dataset(args, data_dir=args.data_path + args.dataset, split="test_acdc_list",
                                  transform=data_transforms["valid_test"])
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False, num_workers=2)
 
