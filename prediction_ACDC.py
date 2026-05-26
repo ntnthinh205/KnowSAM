@@ -167,7 +167,7 @@ if __name__ == '__main__':
         avg_asd_list = 0.0
         classes = args.num_classes
         patch_size = [args.image_size, args.image_size]
-        final_res = [0, 0, 0, 0, 0]
+        final_res = [0, 0, 0, 0]
 
         for i_batch, sampled_batch in enumerate(test_loader):
             # Process one test volume and collect metrics for each class.
@@ -203,7 +203,7 @@ if __name__ == '__main__':
                     single_class_res.append(metric.binary.asd(disc_pred, gt))
                     single_class_res.append(metric.binary.hd95(disc_pred, gt))
                 else:
-                    single_class_res = [0, 0, 0, 0, 0]
+                    single_class_res = [0, 0, 0, 0]
                 metric_list.append(single_class_res)
 
             metric_list = np.array(metric_list).astype("float32")
