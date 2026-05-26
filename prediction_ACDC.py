@@ -156,7 +156,7 @@ if __name__ == '__main__':
     model = "SGDL"
     if model == "SGDL":
         # Load the trained fusion model for evaluation.
-        SGDL_model = KnowSAM(args, bilinear=True).to(args.device).train()
+        SGDL_model = KnowSAM(args, bilinear=False).to(args.device).train()
         SGDL_checkpoint = torch.load(args.SGDL_model_path)
         SGDL_model.load_state_dict(SGDL_checkpoint)
         SGDL_model.eval()
